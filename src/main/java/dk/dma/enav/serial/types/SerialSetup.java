@@ -43,6 +43,9 @@ public class SerialSetup {
     // the target URL to where the device should send messages
     private String target;
 
+    // try sending messages again next time if they could not be sent
+    private boolean tryAgainIfFailed;
+
     // ID for database entry of the setup
     private String _id = "SerialSetup";
 

@@ -58,7 +58,10 @@ public class SerialRoute extends RouteBuilder {
     // ID for easier identification of this route
     private final String ID = "sender";
 
-    private final int MAX_ATTEMPTS = 5;
+    // the maximum number of attempts to try to send messages in a row
+    private final static int MAX_ATTEMPTS = 5;
+
+    private boolean tryAgainIfFailed;
 
     // connection to the CouchDB database
     private CouchDbClient couchDbClient;
@@ -91,6 +94,7 @@ public class SerialRoute extends RouteBuilder {
         this.dataBits = DataBits.getInstance(serialSetup.getDataBits());
         this.initialized = true;
         this.stopBits = StopBits.getInstance(serialSetup.getStopBits());
+        this.tryAgainIfFailed = serialSetup.isTryAgainIfFailed();
     }
 
     public String getID() {
@@ -114,7 +118,6 @@ public class SerialRoute extends RouteBuilder {
         synchronized (messageBuffer) {
             messages = new ArrayList<>(messageBuffer);
         }
-
         send(messages);
     }
 
@@ -141,9 +144,13 @@ public class SerialRoute extends RouteBuilder {
                 }
             }
             if (attempts == MAX_ATTEMPTS) {
-                log.error("Messages could not be sent within the maximum number of attempts. Trying again on next scheduled sending");
-                synchronized (messageBuffer) {
-                    messageBuffer.addAll(messages);
+                if (tryAgainIfFailed) {
+                    log.error("Messages could not be sent within the maximum number of attempts. Trying again on next scheduled sending");
+                    synchronized (messageBuffer) {
+                        messageBuffer.addAll(messages);
+                    }
+                } else {
+                    log.error("Messages could not be sent within the maximum number of attempts.");
                 }
             }
         }
@@ -188,7 +195,6 @@ public class SerialRoute extends RouteBuilder {
                             messages = new ArrayList<>(messageBuffer);
                             messageBuffer.clear();
                         }
-
                         send(messages);
                     });
         }

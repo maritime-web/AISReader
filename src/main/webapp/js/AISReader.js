@@ -25,6 +25,7 @@ $(document).ready(function () {
         var stopBits = $("#stopbits").val();
         var sendRate = $("#send").val();
         var webTarget = $("#target").val();
+        var tryAgainIfFailed = $("#keepTrying").prop("checked");
 
         baudRate = !baudRate ? 38400 : baudRate;
         dataBits = !dataBits ? 8 : dataBits;
@@ -40,7 +41,8 @@ $(document).ready(function () {
                 dataBits: dataBits,
                 stopBits: stopBits,
                 sendRate: sendRate,
-                target: webTarget
+                target: webTarget,
+                tryAgainIfFailed: tryAgainIfFailed
             };
             // send the setup using a PUT request to the server
             $.ajax({
