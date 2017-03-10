@@ -16,12 +16,14 @@
 
 package dk.dma.enav.serial.types;
 
+import lombok.Getter;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 /**
  * Created by Oliver on 02-12-2016.
  */
+@Getter
 public class MessageWithTimeStamp {
 
     // the AIS message as a byte array
@@ -33,13 +35,4 @@ public class MessageWithTimeStamp {
         this.message = message;
         this.timeStamp = DateTime.now(DateTimeZone.UTC).toString();
     }
-
-    public byte[] getMessage() {
-        return message;
-    }
-
-    public String getTimeStamp() {
-        return timeStamp;
-    }
-
 }

@@ -19,13 +19,12 @@ package dk.dma.enav.serial;
 import com.pi4j.io.serial.*;
 import dk.dma.enav.serial.types.MessageWithTimeStamp;
 import org.apache.camel.builder.RouteBuilder;
+import org.glassfish.jersey.client.ClientProperties;
 import org.lightcouch.CouchDbClient;
 import dk.dma.enav.serial.types.SerialSetup;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.ProcessingException;
+import javax.ws.rs.client.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -59,6 +58,8 @@ public class SerialRoute extends RouteBuilder {
     // ID for easier identification of this route
     private final String ID = "sender";
 
+    private final int MAX_ATTEMPTS = 5;
+
     // connection to the CouchDB database
     private CouchDbClient couchDbClient;
 
@@ -80,6 +81,8 @@ public class SerialRoute extends RouteBuilder {
     // function to be called when instantiating object to serial connection and REST client based on a configuration
     private void init(SerialSetup serialSetup) {
         Client client = ClientBuilder.newClient();
+        client.property(ClientProperties.CONNECT_TIMEOUT, 30000);
+        client.property(ClientProperties.READ_TIMEOUT, 30000);
         String tempTarget = serialSetup.getTarget();
         this.target = client.target(tempTarget.startsWith("http://") ? tempTarget : "http://" + tempTarget);
         this.sendRate = serialSetup.getSendRate();
@@ -121,12 +124,27 @@ public class SerialRoute extends RouteBuilder {
         if (!messages.isEmpty()) {
             log.info("Sending messages to server");
             String json = couchDbClient.getGson().toJson(messages);
-            Response response = target.request().put(Entity.entity(json, MediaType.APPLICATION_JSON_TYPE));
-            int status = response.getStatus();
-            if (status != 202) {
-                log.error("Messages could not be sent. Code: " + status);
-            } else {
-                log.info("Messages successfully sent to server");
+            int attempts = 0;
+            while (attempts < MAX_ATTEMPTS) {
+                try {
+                    Response response = target.request().put(Entity.entity(json, MediaType.APPLICATION_JSON_TYPE));
+                    int status = response.getStatus();
+                    if (status != 202) {
+                        log.error("Messages could not be sent. Code: " + status);
+                    } else {
+                        log.info("Messages successfully sent to server");
+                    }
+                    break;
+                } catch (ProcessingException e) {
+                    attempts++;
+                    log.error("Messages could not be sent on attempt #" + attempts);
+                }
+            }
+            if (attempts == MAX_ATTEMPTS) {
+                log.error("Messages could not be sent within the maximum number of attempts. Trying again on next scheduled sending");
+                synchronized (messageBuffer) {
+                    messageBuffer.addAll(messages);
+                }
             }
         }
     }
@@ -147,7 +165,7 @@ public class SerialRoute extends RouteBuilder {
                     byte[] message = event.getBytes();
                     // if the message is empty or null don't do anything
                     if (message.length == 0 || message == null) {
-
+                        // do nothing
                     } else {
                         MessageWithTimeStamp messageWithTimeStamp = new MessageWithTimeStamp(message);
                         messageBuffer.add(messageWithTimeStamp);
@@ -165,7 +183,7 @@ public class SerialRoute extends RouteBuilder {
                     .process(exchange -> {
                         List<MessageWithTimeStamp> messages;
                         // make sure that no elements are being written to the list while the contents of the buffer
-                        // is being copied
+                        // are being copied
                         synchronized (messageBuffer) {
                             messages = new ArrayList<>(messageBuffer);
                             messageBuffer.clear();
