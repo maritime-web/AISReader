@@ -19,13 +19,15 @@ package dk.dma.enav.serial;
 import com.google.gson.Gson;
 import com.pi4j.io.serial.*;
 import dk.dma.enav.serial.types.MessageWithTimeStamp;
+import dk.dma.enav.serial.types.SerialSetup;
 import org.apache.camel.builder.RouteBuilder;
 import org.glassfish.jersey.client.ClientProperties;
-import org.lightcouch.CouchDbClient;
-import dk.dma.enav.serial.types.SerialSetup;
 
 import javax.ws.rs.ProcessingException;
-import javax.ws.rs.client.*;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -64,23 +66,18 @@ public class SerialRoute extends RouteBuilder {
 
     private boolean tryAgainIfFailed;
 
-    // connection to the CouchDB database
-    private CouchDbClient couchDbClient;
-
     private SetupStore setupStore;
 
     private Gson gson;
 
-    public SerialRoute(List<MessageWithTimeStamp> oldBuffer, SerialSetup serialSetup, CouchDbClient couchDbClient, SetupStore setupStore) {
+    public SerialRoute(List<MessageWithTimeStamp> oldBuffer, SerialSetup serialSetup, SetupStore setupStore) {
         init(serialSetup);
         messageBuffer.addAll(oldBuffer);
-        this.couchDbClient = couchDbClient;
         this.setupStore = setupStore;
         this.gson = new Gson();
     }
 
-    public SerialRoute(CouchDbClient couchDbClient, SetupStore setupStore) {
-        this.couchDbClient = couchDbClient;
+    public SerialRoute(SetupStore setupStore) {
         this.setupStore = setupStore;
         this.gson = new Gson();
         // if the database contains a setup use it
@@ -92,10 +89,6 @@ public class SerialRoute extends RouteBuilder {
                 log.error(e.getStackTrace().toString());
             }
         }
-//        if (this.couchDbClient.contains(SerialSetup.ID)) {
-//            SerialSetup serialSetup = this.couchDbClient.find(SerialSetup.class, SerialSetup.ID);
-//            init(serialSetup);
-//        }
     }
 
     // function to be called when instantiating object to serial connection and REST client based on a configuration

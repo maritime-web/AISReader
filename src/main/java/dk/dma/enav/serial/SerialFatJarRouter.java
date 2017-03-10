@@ -16,13 +16,10 @@
 
 package dk.dma.enav.serial;
 
-import org.apache.camel.spring.boot.FatJarRouter;
-import org.lightcouch.CouchDbClient;
 import dk.dma.enav.serial.types.MessageWithTimeStamp;
 import dk.dma.enav.serial.types.SerialSetup;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.apache.camel.spring.boot.FatJarRouter;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ImportResource;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,15 +31,10 @@ import java.util.List;
  * The main class of the project
  */
 @SpringBootApplication
-@ImportResource("context.xml")
 public class SerialFatJarRouter extends FatJarRouter {
 
     // if the serial route has been configured
     private boolean initialized;
-
-    // see bean definition in context.xml
-    @Autowired
-    private CouchDbClient couchDbClient;
 
     private SetupStore setupStore;
 
@@ -57,7 +49,7 @@ public class SerialFatJarRouter extends FatJarRouter {
     public void configure() throws Exception {
         setupStore = SetupStore.getInstance();
         // create a SerialRoute and add it to the camel context
-        serialRoute = new SerialRoute(couchDbClient, setupStore);
+        serialRoute = new SerialRoute(setupStore);
 
         getContext().addRoutes(serialRoute);
 
@@ -77,12 +69,8 @@ public class SerialFatJarRouter extends FatJarRouter {
         if (setupStore.setupExists()) {
             initialized = true;
             setupStore.writeSetup(setup);
-//            String rev = couchDbClient.find(SerialSetup.class, SerialSetup.ID).get_rev();
-//            setup.set_rev(rev);
-//            couchDbClient.update(setup);
         } else {
             setupStore.writeSetup(setup);
-            //couchDbClient.save(setup);
         }
         if (initialized) {
             // route must be removed and then added again to change the configuration
@@ -90,13 +78,13 @@ public class SerialFatJarRouter extends FatJarRouter {
             getContext().stopRoute(serialRoute.getID());
             boolean removed = getContext().removeRoute(serialRoute.getID());
             if (removed) {
-                serialRoute = new SerialRoute(buffer, setup, couchDbClient, setupStore);
+                serialRoute = new SerialRoute(buffer, setup, setupStore);
                 getContext().addRoutes(serialRoute);
             } else {
                 log.error("Sender could not be reconfigured");
             }
         } else {
-            serialRoute = new SerialRoute(new ArrayList<>(), setup, couchDbClient, setupStore);
+            serialRoute = new SerialRoute(new ArrayList<>(), setup, setupStore);
             getContext().addRoutes(serialRoute);
             initialized = true;
         }
