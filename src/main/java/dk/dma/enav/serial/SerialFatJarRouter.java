@@ -44,6 +44,8 @@ public class SerialFatJarRouter extends FatJarRouter {
     @Autowired
     private CouchDbClient couchDbClient;
 
+    private SetupStore setupStore;
+
     private SerialRoute serialRoute;
 
 
@@ -53,8 +55,10 @@ public class SerialFatJarRouter extends FatJarRouter {
     // called on startup
     @Override
     public void configure() throws Exception {
+        setupStore = SetupStore.getInstance();
         // create a SerialRoute and add it to the camel context
-        serialRoute = new SerialRoute(couchDbClient);
+        serialRoute = new SerialRoute(couchDbClient, setupStore);
+
         getContext().addRoutes(serialRoute);
 
         // when termination signal has been sent to application call the shutDown() function of the serial route
@@ -70,13 +74,15 @@ public class SerialFatJarRouter extends FatJarRouter {
     // change the configuration of the device
     public void changeConfig(SerialSetup setup) throws Exception {
         // if a configuration already exists in the database update it, else save it as a new document
-        if (couchDbClient.contains(setup.get_id())) {
+        if (setupStore.setupExists()) {
             initialized = true;
-            String rev = couchDbClient.find(SerialSetup.class, SerialSetup.ID).get_rev();
-            setup.set_rev(rev);
-            couchDbClient.update(setup);
+            setupStore.writeSetup(setup);
+//            String rev = couchDbClient.find(SerialSetup.class, SerialSetup.ID).get_rev();
+//            setup.set_rev(rev);
+//            couchDbClient.update(setup);
         } else {
-            couchDbClient.save(setup);
+            setupStore.writeSetup(setup);
+            //couchDbClient.save(setup);
         }
         if (initialized) {
             // route must be removed and then added again to change the configuration
@@ -84,13 +90,13 @@ public class SerialFatJarRouter extends FatJarRouter {
             getContext().stopRoute(serialRoute.getID());
             boolean removed = getContext().removeRoute(serialRoute.getID());
             if (removed) {
-                serialRoute = new SerialRoute(buffer, setup, couchDbClient);
+                serialRoute = new SerialRoute(buffer, setup, couchDbClient, setupStore);
                 getContext().addRoutes(serialRoute);
             } else {
                 log.error("Sender could not be reconfigured");
             }
         } else {
-            serialRoute = new SerialRoute(new ArrayList<>(), setup, couchDbClient);
+            serialRoute = new SerialRoute(new ArrayList<>(), setup, couchDbClient, setupStore);
             getContext().addRoutes(serialRoute);
             initialized = true;
         }

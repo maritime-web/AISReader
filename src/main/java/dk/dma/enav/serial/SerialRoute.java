@@ -16,6 +16,7 @@
 
 package dk.dma.enav.serial;
 
+import com.google.gson.Gson;
 import com.pi4j.io.serial.*;
 import dk.dma.enav.serial.types.MessageWithTimeStamp;
 import org.apache.camel.builder.RouteBuilder;
@@ -66,19 +67,35 @@ public class SerialRoute extends RouteBuilder {
     // connection to the CouchDB database
     private CouchDbClient couchDbClient;
 
-    public SerialRoute(List<MessageWithTimeStamp> oldBuffer, SerialSetup serialSetup, CouchDbClient couchDbClient) {
+    private SetupStore setupStore;
+
+    private Gson gson;
+
+    public SerialRoute(List<MessageWithTimeStamp> oldBuffer, SerialSetup serialSetup, CouchDbClient couchDbClient, SetupStore setupStore) {
         init(serialSetup);
         messageBuffer.addAll(oldBuffer);
         this.couchDbClient = couchDbClient;
+        this.setupStore = setupStore;
+        this.gson = new Gson();
     }
 
-    public SerialRoute(CouchDbClient couchDbClient) {
+    public SerialRoute(CouchDbClient couchDbClient, SetupStore setupStore) {
         this.couchDbClient = couchDbClient;
+        this.setupStore = setupStore;
+        this.gson = new Gson();
         // if the database contains a setup use it
-        if (this.couchDbClient.contains(SerialSetup.ID)) {
-            SerialSetup serialSetup = this.couchDbClient.find(SerialSetup.class, SerialSetup.ID);
-            init(serialSetup);
+        if (this.setupStore.setupExists()) {
+            try {
+                SerialSetup serialSetup = this.setupStore.getSerialSetup();
+                init(serialSetup);
+            } catch (IOException e) {
+                log.error(e.getStackTrace().toString());
+            }
         }
+//        if (this.couchDbClient.contains(SerialSetup.ID)) {
+//            SerialSetup serialSetup = this.couchDbClient.find(SerialSetup.class, SerialSetup.ID);
+//            init(serialSetup);
+//        }
     }
 
     // function to be called when instantiating object to serial connection and REST client based on a configuration
@@ -126,7 +143,7 @@ public class SerialRoute extends RouteBuilder {
         // There is no need to send to the server if the list is empty
         if (!messages.isEmpty()) {
             log.info("Sending messages to server");
-            String json = couchDbClient.getGson().toJson(messages);
+            String json = gson.toJson(messages);
             int attempts = 0;
             while (attempts < MAX_ATTEMPTS) {
                 try {
