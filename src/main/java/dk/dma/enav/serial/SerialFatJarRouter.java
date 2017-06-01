@@ -16,7 +16,6 @@
 
 package dk.dma.enav.serial;
 
-import dk.dma.enav.serial.types.MessageWithTimeStamp;
 import dk.dma.enav.serial.types.SerialSetup;
 import org.apache.camel.spring.boot.FatJarRouter;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -74,7 +73,7 @@ public class SerialFatJarRouter extends FatJarRouter {
         }
         if (initialized) {
             // route must be removed and then added again to change the configuration
-            List<MessageWithTimeStamp> buffer = serialRoute.stop();
+            List<String> buffer = serialRoute.stop();
             getContext().stopRoute(serialRoute.getID());
             boolean removed = getContext().removeRoute(serialRoute.getID());
             if (removed) {

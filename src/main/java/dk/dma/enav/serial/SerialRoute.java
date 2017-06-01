@@ -18,7 +18,6 @@ package dk.dma.enav.serial;
 
 import com.google.gson.Gson;
 import com.pi4j.io.serial.*;
-import dk.dma.enav.serial.types.MessageWithTimeStamp;
 import dk.dma.enav.serial.types.SerialSetup;
 import org.apache.camel.builder.RouteBuilder;
 import org.glassfish.jersey.client.ClientProperties;
@@ -50,7 +49,7 @@ public class SerialRoute extends RouteBuilder {
     // the rate that the device will send messages to web service
     private String sendRate;
     // list to hold messages before they are sent
-    private static List<MessageWithTimeStamp> messageBuffer;
+    private static List<String> messageBuffer;
     // the baud rate of the serial connection
     private Baud baud;
     // the number of data bits of the serial connection
@@ -70,7 +69,7 @@ public class SerialRoute extends RouteBuilder {
 
     private Gson gson;
 
-    public SerialRoute(List<MessageWithTimeStamp> oldBuffer, SerialSetup serialSetup, SetupStore setupStore) {
+    public SerialRoute(List<String> oldBuffer, SerialSetup serialSetup, SetupStore setupStore) {
         init(serialSetup);
         messageBuffer.addAll(oldBuffer);
         this.setupStore = setupStore;
@@ -112,9 +111,9 @@ public class SerialRoute extends RouteBuilder {
     }
 
     // close the serial interface and return the content of the message buffer so it won't just be deleted
-    public List<MessageWithTimeStamp> stop() throws IOException {
+    public List<String> stop() throws IOException {
         serial.close();
-        List<MessageWithTimeStamp> toBeReturned;
+        List<String> toBeReturned;
         synchronized (messageBuffer) {
             toBeReturned = new ArrayList<>(messageBuffer);
         }
@@ -123,7 +122,7 @@ public class SerialRoute extends RouteBuilder {
 
     // send all buffered messages before shutting down
     public void shutDown() throws IOException {
-        List<MessageWithTimeStamp> messages;
+        List<String> messages;
 
         synchronized (messageBuffer) {
             messages = new ArrayList<>(messageBuffer);
@@ -132,7 +131,7 @@ public class SerialRoute extends RouteBuilder {
     }
 
     // send a list of messages to the defined server
-    private void send(List<MessageWithTimeStamp> messages) {
+    private void send(List<String> messages) {
         // There is no need to send to the server if the list is empty
         if (!messages.isEmpty()) {
             log.info("Sending messages to server");
@@ -140,7 +139,7 @@ public class SerialRoute extends RouteBuilder {
             int attempts = 0;
             while (attempts < MAX_ATTEMPTS) {
                 try {
-                    Response response = target.request().put(Entity.entity(json, MediaType.APPLICATION_JSON_TYPE));
+                    Response response = target.request().post(Entity.entity(json, MediaType.APPLICATION_JSON_TYPE));
                     int status = response.getStatus();
                     if (status != 202) {
                         log.error("Messages could not be sent. Code: " + status);
@@ -179,13 +178,14 @@ public class SerialRoute extends RouteBuilder {
             // define listener for what should happen when a message is received on the serial port
             serial.addListener(event -> {
                 try {
-                    byte[] message = event.getBytes();
+                    String message = event.getAsciiString();
                     // if the message is empty or null don't do anything
-                    if (message.length == 0 || message == null) {
+                    if (message.length() == 0 || message == null) {
                         // do nothing
                     } else {
-                        MessageWithTimeStamp messageWithTimeStamp = new MessageWithTimeStamp(message);
-                        messageBuffer.add(messageWithTimeStamp);
+                        //MessageWithTimeStamp messageWithTimeStamp = new MessageWithTimeStamp(message);
+                        //messageBuffer.add(messageWithTimeStamp);
+                        messageBuffer.add(message);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -198,7 +198,7 @@ public class SerialRoute extends RouteBuilder {
             from("timer:sender?fixedRate=true&period=" + sendRate)
                     .id(ID)
                     .process(exchange -> {
-                        List<MessageWithTimeStamp> messages;
+                        List<String> messages;
                         // make sure that no elements are being written to the list while the contents of the buffer
                         // are being copied
                         synchronized (messageBuffer) {
