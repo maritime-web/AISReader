@@ -18,6 +18,21 @@
  * Created by Oliver on 02-12-2016.
  */
 $(document).ready(function () {
+
+    getSetup();
+
+    function getSetup() {
+        $.getJSON("rest/setup")
+            .done(function (data) {
+               $("#baudCurrent").val(data.baud);
+               $("#databitsCurrent").val(data.dataBits);
+               $("#stopbitsCurrent").val(data.stopBits);
+               $("#sendCurrent").val(data.sendRate);
+               $("#targetCurrent").val(data.target);
+               $("#keepTryingCurrent").prop("checked", data.tryAgainIfFailed);
+            });
+    }
+
     // click listener for the submit button
     $("#submit").click(function () {
         var baudRate = $("#baud").val();
@@ -57,18 +72,34 @@ $(document).ready(function () {
                     alert("Something went wrong");
                 }
             });
+            getSetup();
         }
     });
+
     // click listener for the shutdown button
     $("#shutdown").click(function () {
         var confirmed = confirm("Are you sure you want to shut down?");
         if (confirmed) {
             $.ajax({
-               type: "GET",
+                type: "GET",
                 url: "rest/shutdown",
-                data: {areYouSure: "yes"},
+                data: {areYouSure: "yes", reboot: false},
                 error: function () {
                     alert("AISReader could not be shut down");
+                }
+            });
+        }
+    });
+
+    $("#reboot").click(function () {
+        var confirmed = confirm("Are you sure you want to reboot?");
+        if (confirmed) {
+            $.ajax({
+                type: "GET",
+                url: "rest/shutdown",
+                data: {areYouSure: "yes", reboot: true},
+                error: function () {
+                    alert("AISReader could not be rebooted");
                 }
             });
         }

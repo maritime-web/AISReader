@@ -25,21 +25,46 @@
 </head>
 <body>
     <h1>AIS Reader Configuration</h1>
-    <button id="shutdown" class="shutDown">Shut Down</button>
-    <h4>Baud Rate</h4>
-    <input id="baud" placeholder="Default: 38400" />
-    <h4>Data Bits</h4>
-    <input id="databits" placeholder="Default: 8" />
-    <h4>Stop Bits</h4>
-    <input id="stopbits" placeholder="Default: 1" />
-    <h4>Send Rate</h4>
-    <input id="send" placeholder="Default: 5m" />
-    <h4>AIS Web Target</h4>
-    <input id="target" placeholder="Where to send" />
-    <div style="padding-top: 15px; padding-bottom: 15px">
-        <input id="keepTrying" type="checkbox" checked>
-        <label>Keep trying sending messages if sending fails?</label>
+    <div id="wrapper">
+        <div class="left">
+            <h3>Change Setup</h3>
+            <h4>Baud Rate</h4>
+            <input id="baud" placeholder="Default: 38400" />
+            <h4>Data Bits</h4>
+            <input id="databits" placeholder="Default: 8" />
+            <h4>Stop Bits</h4>
+            <input id="stopbits" placeholder="Default: 1" />
+            <h4>Send Rate</h4>
+            <input id="send" placeholder="Default: 5m" />
+            <h4>AIS Web Target</h4>
+            <input id="target" placeholder="Where to send" />
+            <div style="padding-top: 15px; padding-bottom: 15px">
+                <input id="keepTrying" type="checkbox" checked>
+                <label>Keep trying sending messages if sending fails?</label>
+            </div>
+            <button id="submit" class="send">Submit</button>
+        </div>
+        <div class="right">
+            <h3>Current Setup</h3>
+            <h4>Baud Rate</h4>
+            <input disabled id="baudCurrent" />
+            <h4>Data Bits</h4>
+            <input disabled id="databitsCurrent" />
+            <h4>Stop Bits</h4>
+            <input disabled id="stopbitsCurrent" />
+            <h4>Send Rate</h4>
+            <input disabled id="sendCurrent" />
+            <h4>AIS Web Target</h4>
+            <input disabled id="targetCurrent" />
+            <div style="padding-top: 15px; padding-bottom: 15px">
+                <input disabled id="keepTryingCurrent" type="checkbox">
+                <label>Keep trying sending messages if sending fails?</label>
+            </div>
+        </div>
+        <div id="corner">
+            <button id="shutdown" class="shutDown">Shut Down</button>
+            <button id="reboot" class="reboot">Reboot</button>
+        </div>
     </div>
-    <button id="submit" class="send">Submit</button>
 </body>
 </html>

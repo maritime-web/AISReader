@@ -17,6 +17,8 @@
 package dk.dma.enav.serial;
 
 import dk.dma.enav.serial.types.SerialSetup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,6 +39,10 @@ public class SerialRestController {
     @Autowired
     private SerialFatJarRouter serialFatJarRouter;
 
+    private SetupStore setupStore = SetupStore.getInstance();
+
+    private final Logger log = LoggerFactory.getLogger(SerialRestController.class);
+
     // endpoint for configuration of the device
     @RequestMapping(path = "/setup", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity setupSerial(@RequestBody SerialSetup setup) {
@@ -50,11 +56,15 @@ public class SerialRestController {
 
     // endpoint for shutting down the device
     @RequestMapping(path = "/shutdown", method = RequestMethod.GET)
-    public ResponseEntity shutdown(@RequestParam(name = "areYouSure") String areYouSure) {
+    public ResponseEntity shutdown(@RequestParam(name = "areYouSure") String areYouSure, boolean reboot) {
         if (areYouSure.equals("yes")) {
             try {
                 serialFatJarRouter.getContext().stop();
-                Runtime.getRuntime().exec("sudo shutdown -h now");
+                if (reboot) {
+                    Runtime.getRuntime().exec("sudo reboot");
+                } else {
+                    Runtime.getRuntime().exec("sudo shutdown -h now");
+                }
                 return ResponseEntity.ok().build();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -67,4 +77,15 @@ public class SerialRestController {
         }
     }
 
+    @RequestMapping(path = "/setup", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity getSetup() {
+        SerialSetup setup;
+        try {
+            setup = setupStore.getSerialSetup();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not get setup");
+        }
+        return ResponseEntity.ok(setup);
+    }
 }

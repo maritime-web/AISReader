@@ -14,10 +14,24 @@
  * limitations under the License.
  */
 
-.shutDown {
+#corner {
     position: absolute;
     margin-right: 5px;
     margin-top: 3px;
     top: 0;
     right: 0;
+}
+
+#wrapper {
+    width: auto;
+    overflow: auto;
+}
+
+.left {
+    float: left;
+}
+
+.right {
+    float: left;
+    margin-left: 20%;
 }
